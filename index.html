@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM 速度體感模擬器 — tok/s 到底有多快？</title>
+<meta name="description" content="把 LLM 的 tok/s 數字換算成看得見的速度感：TTFT 首字等待、逐字產生、左右對比。">
+<style>
+  :root{
+    --bg:#0e1117; --bg2:#151a23; --bg3:#1c222d;
+    --line:#2a323f; --txt:#e6edf3; --dim:#8b98a9; --dim2:#5f6b7a;
+    --acc:#4f9cf9; --acc2:#7ee787; --warn:#f0b429; --bad:#f2777a;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+  code{font-family:var(--mono);font-size:.92em;background:var(--bg3);padding:1px 5px;border-radius:4px}
+
+  header h1{margin:0 0 6px;font-size:26px;letter-spacing:.5px}
+  header p{margin:0 0 24px;color:var(--dim);font-size:14px}
+
+  /* ── 資料錯誤橫幅 ── */
+  #banner{background:#2b1416;border:1px solid var(--bad);color:#ffd7d8;
+    border-radius:10px;padding:14px 18px;margin-bottom:22px;font-size:14px}
+  #banner ul{margin:8px 0 0;padding-left:20px} #banner li{margin:2px 0}
+  #banner .hint{margin-top:10px;color:var(--dim);font-size:12.5px}
+
+  .panel{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:18px}
+
+  /* ── controls ── */
+  .ctrl{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .field label{display:block;font-size:12px;color:var(--dim);margin-bottom:6px;letter-spacing:.5px}
+  select{width:100%;background:var(--bg3);color:var(--txt);border:1px solid var(--line);
+    border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit}
+  select:focus{outline:2px solid var(--acc);outline-offset:-1px}
+  optgroup{color:var(--dim);font-style:normal}
+  .row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:16px}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--acc);width:16px;height:16px}
+
+  /* ── stat cards ── */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:20px}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card .k{font-size:11px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+  .card .v{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:4px}
+  .card .u{font-size:12px;color:var(--dim2);margin-left:3px;font-weight:400}
+  .card .s{font-size:12px;color:var(--dim);margin-top:2px}
+  .v.acc{color:var(--acc)} .v.good{color:var(--acc2)} .v.warn{color:var(--warn)} .v.bad{color:var(--bad)}
+  .t-good{color:var(--acc2)} .t-warn{color:var(--warn)} .t-bad{color:var(--bad)} .t-info{color:var(--acc)}
+
+  .srcnote{margin-top:14px;font-size:12.5px;color:var(--dim);background:var(--bg3);
+    border-left:3px solid var(--line);border-radius:0 6px 6px 0;padding:9px 12px}
+  .srcnote a{color:var(--acc);text-decoration:none;border-bottom:1px dotted currentColor}
+  .tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:99px;
+    border:1px solid currentColor;margin-right:6px;vertical-align:1px;letter-spacing:.5px}
+  .tag.good{color:var(--acc2)} .tag.info{color:var(--acc)} .tag.warn{color:var(--warn)} .tag.bad{color:var(--bad)}
+  .est{font-size:10px;color:var(--warn);vertical-align:2px;margin-left:4px}
+
+  /* ── buttons ── */
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 14px;align-items:center}
+  button{background:var(--bg3);color:var(--txt);border:1px solid var(--line);border-radius:8px;
+    padding:10px 18px;font-size:14px;font-family:inherit;cursor:pointer;transition:.12s}
+  button:hover:not(:disabled){border-color:var(--dim2);background:#232b38}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#04101f;font-weight:600}
+  button.primary:hover:not(:disabled){background:#66aaff;border-color:#66aaff}
+  button.ghost{border-style:dashed;color:var(--dim)}
+  .speedbtns{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .speedbtns button{border:0;border-radius:0;padding:10px 14px;font-family:var(--mono);font-size:13px}
+  .speedbtns button.on{background:var(--acc);color:#04101f;font-weight:600}
+
+  /* ── chat ── */
+  .stage{display:grid;gap:16px}
+  .stage.dual{grid-template-columns:1fr 1fr}
+  @media(max-width:820px){.stage.dual{grid-template-columns:1fr}}
+
+  .chat{background:var(--bg2);border:1px solid var(--line);border-radius:12px;
+    display:flex;flex-direction:column;min-height:440px}
+  .chat.win{border-color:var(--acc2)}
+  .chat h3{margin:0;padding:12px 16px;font-size:13.5px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .chat h3 .hw{color:var(--dim);font-weight:400;font-size:12px}
+  .live{font-family:var(--mono);font-size:12px;color:var(--dim);white-space:nowrap}
+  .live b{color:var(--acc);font-weight:600}
+  .body{padding:16px;flex:1;overflow-y:auto;max-height:420px}
+  .msg{margin-bottom:14px;display:flex;gap:10px}
+  .who{flex:0 0 26px;height:26px;border-radius:6px;font-size:11px;display:flex;
+    align-items:center;justify-content:center;font-weight:700;margin-top:2px}
+  .msg.u .who{background:#2d3b4d;color:var(--dim)}
+  .msg.a .who{background:var(--acc);color:#04101f}
+  .txt{font-size:14.5px;white-space:pre-wrap;word-break:break-word;flex:1}
+  .cursor{display:inline-block;width:8px;height:16px;background:var(--acc);
+    vertical-align:-3px;animation:bl 1s steps(2) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .think{color:var(--dim);font-size:13.5px;display:flex;align-items:center;gap:8px;font-family:var(--mono)}
+  .dots i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--dim);
+    margin-right:3px;animation:pp 1.2s infinite}
+  .dots i:nth-child(2){animation-delay:.2s} .dots i:nth-child(3){animation-delay:.4s}
+  @keyframes pp{0%,60%,100%{opacity:.25}30%{opacity:1}}
+  .bar{height:3px;background:var(--bg3);border-radius:0 0 12px 12px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .1s linear}
+  .done{padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;
+    color:var(--dim);font-family:var(--mono);min-height:38px}
+  .done b{color:var(--acc2)}
+
+  footer{margin-top:36px;font-size:12px;color:var(--dim2);border-top:1px solid var(--line);padding-top:16px}
+  footer a{color:var(--dim);text-decoration:none;border-bottom:1px dotted currentColor}
+  h2.sec{font-size:14px;color:var(--dim);letter-spacing:1px;margin:32px 0 12px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="banner" hidden></div>
+
+<header>
+  <h1 id="title">LLM 速度體感模擬器</h1>
+  <p id="subtitle"></p>
+</header>
+
+<div class="panel">
+  <div class="ctrl">
+    <div class="field">
+      <label>模型 / 硬體組合 <span id="lblA"></span></label>
+      <select id="selA"></select>
+    </div>
+    <div class="field" id="fieldB" hidden>
+      <label>對照組 B</label>
+      <select id="selB"></select>
+    </div>
+    <div class="field">
+      <label>輸入 Context 長度</label>
+      <select id="selCtx"></select>
+    </div>
+    <div class="field">
+      <label>回覆長度</label>
+      <select id="selLen"></select>
+    </div>
+  </div>
+
+  <div class="row">
+    <label class="toggle"><input type="checkbox" id="cmp"> 開啟左右對比模式</label>
+    <label class="toggle"><input type="checkbox" id="ttft"> 模擬首字等待（TTFT）</label>
+  </div>
+</div>
+
+<h2 class="sec">數字換算</h2>
+<div class="stats" id="stats"></div>
+<div class="srcnote" id="srcnote"></div>
+
+<div class="btns">
+  <button class="primary" id="run">▶ 開始模擬</button>
+  <button id="pause" disabled>⏸ 暫停</button>
+  <button id="reset" disabled>↺ 重置</button>
+  <span class="speedbtns" id="mult"></span>
+  <button class="ghost" id="share">🔗 複製分享連結</button>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<footer>
+  <span id="legend"></span>
+  <p>資料與文案都在 <code>data.js</code> —
+    <a href="https://github.com/craig7351/llm-speed-demo" target="_blank" rel="noreferrer">fork 這個專案</a>
+    改成你自己的版本。</p>
+</footer>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

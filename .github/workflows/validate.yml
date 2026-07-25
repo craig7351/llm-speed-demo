@@ -1,0 +1,17 @@
+name: Validate data.js
+
+# PR 或推到非 main 分支時只驗證、不部署，讓壞資料進不了 main
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/validate-data.mjs
