@@ -26,6 +26,14 @@ if (D) {
   (D.contextPresets || []).forEach((c, i) => need(+c.tokens > 0 && c.label, `contextPresets[${i}] 需要 tokens > 0 與 label`));
   (D.replyLengths || []).forEach((c, i) => need(+c.tokens > 0 && c.label, `replyLengths[${i}] 需要 tokens > 0 與 label`));
 
+  if (D.site?.links !== undefined) {
+    need(Array.isArray(D.site.links), 'site.links 必須是陣列');
+    (Array.isArray(D.site.links) ? D.site.links : []).forEach((l, i) => {
+      need(l && typeof l.label === 'string' && l.label, `site.links[${i}] 缺少 label`);
+      need(l && /^https?:\/\//.test(l.url || ''), `site.links[${i}] 的 url 必須以 http(s):// 開頭`);
+    });
+  }
+
   const ids = new Set();
   (D.models || []).forEach((m, i) => {
     const at = `models[${i}]${m?.id ? ` (id: ${m.id})` : ''}`;
