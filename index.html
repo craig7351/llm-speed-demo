@@ -23,7 +23,9 @@
     gap:12px 20px;flex-wrap:wrap;margin:0 0 20px}
   header h1{margin:0;font-size:26px;line-height:1.25;letter-spacing:.5px}
   header p{margin:6px 0 0;color:var(--dim);font-size:14px;line-height:1.5}
-  header .txt{flex:1 1 300px;min-width:0}
+  /* 注意：不要用 .txt，那是聊天泡泡的 class（帶 white-space:pre-wrap，
+     會把 HTML 縮排的換行變成真的空行）。 */
+  header .hd{flex:1 1 300px;min-width:0}
 
   /* ── 社群／推廣按鈕：低調的外框樣式，hover 才填色 ── */
   .links{display:flex;gap:8px;flex-wrap:wrap;flex:0 0 auto}
@@ -135,7 +137,7 @@
 <div id="banner" hidden></div>
 
 <header>
-  <div class="txt">
+  <div class="hd">
     <h1 id="title">LLM 速度體感模擬器</h1>
     <p id="subtitle"></p>
   </div>
