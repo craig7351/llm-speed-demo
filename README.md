@@ -83,7 +83,7 @@ node scripts/validate-data.mjs
 | 欄位 | 作用 |
 |---|---|
 | `site` | 標題、副標、頁尾說明（副標與頁尾吃 HTML） |
-| `site.links` | 推廣／社群按鈕，同時出現在頁面頂端與頁尾。每筆填 `label`、`url`、選填 `note`（hover 提示）與 `icon`（`facebook` / `youtube` / `github` / `line` / `x`，省略則顯示 🔗）。整個陣列清空按鈕就不出現 |
+| `site.links` | 推廣／社群按鈕，顯示在頁面頂端標題右側。每筆填 `label`、`url`、選填 `note`（hover 提示）與 `icon`（`facebook` / `youtube` / `github` / `line` / `x`，省略則顯示 🔗）。整個陣列清空按鈕就不出現 |
 | `readingSpeedCharsPerSec` | 舒適閱讀速度，用來算「等於你閱讀的幾倍」。中文預設 6.7（≈ 400 字/分），英文語系可改成約 5（≈ 250 wpm） |
 | `feelScale` | decode 速度 → 主觀評語（極慢／偏慢／流暢…）。由上往下比對第一個 `under` 成立的項目，最後一項不寫 `under` 當 catch-all |
 | `contextPresets` / `replyLengths` | 兩個數字下拉選單的選項，`default: true` 決定預設值 |

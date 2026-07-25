@@ -87,7 +87,6 @@
     el.hidden = false;
   }
   renderLinks($('links'));
-  renderLinks($('links2'));
 
   /* ── 近似 tokenizer：CJK 1 字 ≈ 1 token，其餘約 4 字元 ≈ 1 token ── */
   function tokenize(s) {

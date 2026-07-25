@@ -17,7 +17,7 @@ window.LLM_SPEED_DATA = {
     subtitle: '報告上的 <code>xxx tok/s</code> 沒人有感覺。選一組模型與硬體，按下模擬，用眼睛看它到底有多慢。',
     footerNote: '模擬僅重現「速度感」：TTFT = context ÷ prefill 速度，出字速率 = decode 速度 × 倍速。中文以 1 字 ≈ 1 token、英文以 4 字元 ≈ 1 token 近似換算。',
 
-    /* 推廣連結／社群按鈕。會同時出現在頁面頂端與頁尾。
+    /* 推廣連結／社群按鈕，顯示在頁面頂端標題右側。
        icon 可填 facebook / youtube / github / line / x，或省略（顯示 🔗）。
        整個 links 陣列拿掉或清空，按鈕就不會出現。                        */
     links: [
