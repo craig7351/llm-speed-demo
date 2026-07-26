@@ -26,6 +26,12 @@ window.LLM_SPEED_DATA = {
         url: 'https://www.facebook.com/people/Book-Ai/61584339789020/',
         icon: 'facebook',
         note: '更多 AI 實測與工具分享'
+      },
+      {
+        label: 'GitHub',
+        url: 'https://github.com/craig7351/llm-speed-demo',
+        icon: 'github',
+        note: '原始碼與資料，歡迎 fork 成你自己的版本'
       }
     ]
   },
